@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context.xsd">
+
+    <import resource="spring-dao.xml"/>
+    <!--引入spring-redis相关配置-->
+    <import resource="spring-redis.xml"/>
+
+    <context:component-scan base-package="com.zty"/>
+    <!--自定义filter-->
+    <bean id="roleOrFilter" class="com.zty.filter.RoleOrFilter">
+
+    </bean>
+    
+    <!--配置shiro的web过滤器,是shiro的核心配置,shiro的所有功能都基于这个对象-->
+    <bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+        <property name="securityManager" ref="securityManager"/>
+        <!--未认证通过跳转此页面-->
+        <property name="loginUrl" value="/login.html"/>
+        <!--没有权限跳转此页面-->
+        <property name="unauthorizedUrl" value="/403.html"/>
+
+        <!--拦截器链,从上往下匹配 anon不需要认证 authc需要认证-->
+        <property name="filterChainDefinitions">
+            <value>
+                /login.html = anon
+                /subLogin = anon
+                /testRole3 = roles["admin"]
+                /testRole4 = roles["admin","admin1"]
+                /testPerms2 = perms["user:delete"]
+                /testPerms3 = perms["user:delete","user:update"]
+                /testCustomRole = roleOrFilter["admin","admin1"]
+                /index.html = authc
+                /* = authc
+            </value>
+        </property>
+    </bean>
+
+    <!--创建securityManager-->
+    <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+        <property name="realm" ref="customRealm"/>
+        <!--修改默认session管理器为自定义redissession-->
+        <property name="sessionManager" ref="sessionManager"/>
+    </bean>
+
+    <bean id="customRealm" class="com.zty.realm.CustomRealm">
+        <property name="credentialsMatcher" ref="credentialsMatcher"/>
+    </bean>
+
+    <bean id="credentialsMatcher" class="org.apache.shiro.authc.credential.HashedCredentialsMatcher">
+        <property name="hashAlgorithmName" value="md5"/>
+        <property name="hashIterations" value="1"/>
+    </bean>
+
+    <!--设置session管理器-->
+    <!--<bean class="org.apache.shiro.web.session.mgt.DefaultWebSessionManager" id="sessionManager">-->
+        <!--<property name="sessionDAO" ref="redisSessionDao"/>-->
+    <!--</bean>-->
+    <!--使用自定义的session管理器-->
+    <bean id="sessionManager" class="com.zty.session.CustomSessionManager">
+        <property name="sessionDAO" ref="redisSessionDao"/>
+    </bean>
+    <!--自定义的redisSession-->
+    <bean class="com.zty.session.RedisSessionDao" id="redisSessionDao"/>
+</beans>
